@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "spots",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Коряжник", "fish": "Щука", "model": null, "depth": 2500.0 }, "geometry": { "type": "Point", "coordinates": [ 46.06310938988296, 51.502330318226342 ] } },
+{ "type": "Feature", "properties": { "name": "подмостовье", "fish": "голавль", "model": null, "depth": 1000.0 }, "geometry": { "type": "Point", "coordinates": [ 46.063870711481911, 51.528248886016243 ] } },
+{ "type": "Feature", "properties": { "name": "набка", "fish": "сом", "model": null, "depth": 2222.0 }, "geometry": { "type": "Point", "coordinates": [ 46.047941521103468, 51.524547141088554 ] } }
+]
+}

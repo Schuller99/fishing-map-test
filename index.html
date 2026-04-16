@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивная Карта Клева</title>
+    
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        .panel {
+            position: absolute; background: rgba(255, 255, 255, 0.95); padding: 12px;
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1;
+        }
+        #filter-panel { top: 10px; left: 10px; width: 160px; }
+        #weather-panel { top: 10px; right: 50px; width: 220px; font-size: 14px; }
+        
+        .panel h3 { margin: 0 0 10px 0; font-size: 15px; color: #2c3e50; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .filter-btn { display: block; width: 100%; margin-bottom: 8px; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .filter-btn:hover { background: #2980b9; }
+        .filter-btn.active { background: #e74c3c; font-weight: bold; }
+        
+        .action-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            padding: 12px 24px; background: #27ae60; color: white; border: none; border-radius: 30px;
+            font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1; transition: 0.3s;
+        }
+        .action-btn.active { background: #e74c3c; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } 100% { transform: translateX(-50%) scale(1); } }
+
+        .maplibregl-popup-content { padding: 15px; border-radius: 8px; font-size: 14px; color: #333; }
+        .popup-title { margin: 0 0 8px 0; color: #2c3e50; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="filter-panel" class="panel">
+        <h3>🎯 Фильтры</h3>
+        <button class="filter-btn active" id="btn-all">Все точки</button>
+        <button class="filter-btn" id="btn-pike">Только Судак</button>
+        <button class="filter-btn" id="btn-deep">Глубина > 4м</button>
+    </div>
+
+    <div id="weather-panel" class="panel">
+        <h3>⛅ Погода на водоеме</h3>
+        <div id="weather-data">Кликни в любое место на воде, чтобы узнать погоду...</div>
+    </div>
+
+    <button id="add-mode-btn" class="action-btn">📍 Добавить свою яму</button>
+
+    <script>
+        const bounds = [[44.50, 50.50], [47.50, 52.50]];
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            center: [46.035, 51.518], zoom: 12, minZoom: 8, maxZoom: 18, maxBounds: bounds,
+            pitch: 65, bearing: -20,
+            style: {
+                version: 8,
+                sources: { 'satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } },
+                layers: [{ id: 'satellite-layer', type: 'raster', source: 'satellite' }]
+            }
+        });
+
+        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+        map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }));
+
+        let isAddMode = false;
+        let mySavedSpots = JSON.parse(localStorage.getItem('myFishingSpots')) || { type: 'FeatureCollection', features: [] };
+
+        map.on('load', () => {
+            
+            // --- 1. СЛОЙ QGIS ---
+            map.addSource('fishing-spots', { type: 'geojson', data: './spots.geojson' });
+
+            map.addLayer({
+                'id': 'spots-layer',
+                'type': 'circle',
+                'source': 'fishing-spots',
+                'paint': {
+                    'circle-radius': 9,
+                    'circle-color': ['match', ['get', 'fish'], 'Судак', '#3498db', 'Щука', '#2ecc71', '#e74c3c'],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // --- 2. СЛОЙ ПОЛЬЗОВАТЕЛЯ ---
+            map.addSource('my-spots', { type: 'geojson', data: mySavedSpots });
+
+            map.addLayer({
+                'id': 'my-spots-layer',
+                'type': 'circle',
+                'source': 'my-spots',
+                'paint': {
+                    'circle-radius': 10,
+                    // Твои точки тоже красятся по рыбе! Если рыбы нет в списке - цвет золотой
+                    'circle-color': ['match', ['get', 'fish'], 'Судак', '#3498db', 'Щука', '#2ecc71', '#f1c40f'],
+                    'circle-stroke-width': 3,
+                    'circle-stroke-color': '#2c3e50' // Темная обводка твоих точек
+                }
+            });
+
+            // --- КЛИКИ ПО КАРТЕ ---
+            map.on('click', async (e) => {
+                
+                // Добавление точки
+                if (isAddMode) {
+                    const spotName = prompt("Название вашей точки (например: Коряжник):");
+                    if (!spotName) return; 
+
+                    // НОВОЕ: Спрашиваем рыбу
+                    const fishName = prompt("Какая рыба здесь водится? (Судак, Щука или др.):");
+                    const depth = prompt("Укажите глубину в метрах:");
+
+                    const newFeature = {
+                        type: 'Feature',
+                        // Сохраняем рыбу в свойства
+                        properties: { name: spotName, type: 'Моя яма', fish: fishName, depth: depth },
+                        geometry: { type: 'Point', coordinates: [e.lngLat.lng, e.lngLat.lat] }
+                    };
+
+                    mySavedSpots.features.push(newFeature);
+                    localStorage.setItem('myFishingSpots', JSON.stringify(mySavedSpots));
+                    map.getSource('my-spots').setData(mySavedSpots);
+
+                    toggleAddMode();
+                    return;
+                }
+
+                // Клик по существующей точке (Попап)
+                const clickedFeatures = map.queryRenderedFeatures(e.point, { layers: ['spots-layer', 'my-spots-layer'] });
+
+                if (clickedFeatures.length > 0) {
+                    const feature = clickedFeatures[0];
+                    const props = feature.properties;
+                    const coords = feature.geometry.coordinates.slice();
+
+                    const htmlContent = `
+                        <div class="popup-title"><b>${props.name || 'Точка'}</b></div>
+                        <div><b>Рыба:</b> ${props.fish || props.type || '—'}</div>
+                        <div><b>Глубина:</b> ${props.depth || '?'} м.</div>
+                    `;
+
+                    new maplibregl.Popup().setLngLat(coords).setHTML(htmlContent).addTo(map);
+                } else {
+                    // Клик по пустой воде (Погода)
+                    document.getElementById('weather-data').innerHTML = "<i>Связь со спутником...</i>";
+                    try {
+                        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${e.lngLat.lat}&longitude=${e.lngLat.lng}&current_weather=true`);
+                        const data = await response.json();
+                        
+                        document.getElementById('weather-data').innerHTML = `
+                            <b>Температура:</b> ${data.current_weather.temperature}°C<br>
+                            <b>Ветер:</b> ${data.current_weather.windspeed} км/ч<br>
+                            <b>Направление:</b> ${data.current_weather.winddirection}°
+                        `;
+                    } catch (error) {
+                        document.getElementById('weather-data').innerHTML = "Ошибка связи с сервером погоды.";
+                    }
+                }
+            });
+
+            // Курсоры
+            map.on('mouseenter', 'spots-layer', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'spots-layer', () => map.getCanvas().style.cursor = '');
+            map.on('mouseenter', 'my-spots-layer', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'my-spots-layer', () => map.getCanvas().style.cursor = '');
+
+            // Режим добавления
+            const btnAdd = document.getElementById('add-mode-btn');
+            function toggleAddMode() {
+                isAddMode = !isAddMode;
+                if (isAddMode) {
+                    btnAdd.classList.add('active'); btnAdd.innerText = "🛑 Кликни на воду (Отмена)"; map.getCanvas().style.cursor = 'crosshair';
+                } else {
+                    btnAdd.classList.remove('active'); btnAdd.innerText = "📍 Добавить свою яму"; map.getCanvas().style.cursor = '';
+                }
+            }
+            btnAdd.addEventListener('click', toggleAddMode);
+
+            // --- ФИЛЬТРЫ (Теперь работают для обоих слоев) ---
+            const btnAll = document.getElementById('btn-all');
+            const btnPike = document.getElementById('btn-pike');
+            const btnDeep = document.getElementById('btn-deep');
+
+            function resetButtons() {
+                btnAll.classList.remove('active'); btnPike.classList.remove('active'); btnDeep.classList.remove('active');
+            }
+
+            btnAll.addEventListener('click', () => {
+                map.setFilter('spots-layer', null); 
+                map.setFilter('my-spots-layer', null); // Сбрасываем фильтр для своих точек
+                resetButtons(); btnAll.classList.add('active');
+            });
+
+            btnPike.addEventListener('click', () => {
+                map.setFilter('spots-layer', ['==', ['get', 'fish'], 'Судак']); 
+                map.setFilter('my-spots-layer', ['==', ['get', 'fish'], 'Судак']); // Фильтруем свои точки
+                resetButtons(); btnPike.classList.add('active');
+            });
+
+            btnDeep.addEventListener('click', () => {
+                map.setFilter('spots-layer', ['>', ['get', 'depth'], 4]);
+                map.setFilter('my-spots-layer', ['>', ['get', 'depth'], 4]); // Фильтруем свои точки
+                resetButtons(); btnDeep.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
