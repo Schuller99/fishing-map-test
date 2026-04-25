@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fishing Map Pro — Final Clean</title>
+    <title>Fishing Map Pro — Final Edition</title>
     
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -14,7 +14,7 @@
 
         .panel { position: absolute; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1; }
         
-        /* СТАТУС-БАР РЫБНАДЗОРА (ИНФОРМАТИВНЫЙ) */
+        /* СТАТУС-БАР РЫБНАДЗОРА */
         #status-bar {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 650px; padding: 12px; border-radius: 12px;
@@ -26,7 +26,7 @@
         .status-warning { background: #e67e22; }
         .status-danger { background: #e74c3c; }
 
-        /* ОКНО ПРАВИЛ (ПОЛНОЕ: С ЭЛЕКТРОУДОЧКАМИ И СЕТЯМИ) */
+        /* ОКНО ПРАВИЛ (С ПОЛНОЙ ИНФОРМАЦИЕЙ) */
         #rules-details {
             display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
             width: 85%; max-width: 580px; background: white; padding: 25px; border-radius: 15px;
@@ -37,7 +37,7 @@
         #rules-details li { margin-bottom: 8px; }
         #rules-details button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; }
 
-        /* ФИЛЬТРЫ */
+        /* ПАНЕЛЬ ФИЛЬТРОВ */
         #filter-panel { top: 85px; left: 15px; width: 180px; }
         .filter-btn { display: block; width: 100%; margin-bottom: 10px; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
         .filter-btn.active { background: #e74c3c; }
@@ -47,8 +47,8 @@
         #weather-data { font-size: 13px; margin-top: 5px; color: #34495e; line-height: 1.4; }
 
         /* НАВИГАЦИЯ В ПОПАПЕ */
-        .nav-links-container { display: flex; gap: 8px; margin-top: 15px; justify-content: center; }
-        .nav-link { flex: 1; text-align: center; padding: 12px 5px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; color: white; }
+        .nav-links-container { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+        .nav-link { flex: 1; text-align: center; padding: 10px 5px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; color: white; }
         .btn-yandex { background: #ffcc00; color: black; }
         .btn-2gis { background: #2ecc71; }
         .btn-internal { display: block; margin-top: 10px; padding: 12px; background: #34495e; color: white; text-align: center; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; border: none; width: 100%; }
@@ -105,7 +105,6 @@
         let isAddMode = false;
         let mySavedSpots = JSON.parse(localStorage.getItem('myFishingSpots')) || { type: 'FeatureCollection', features: [] };
 
-        // --- ТОТ САМЫЙ ТЕКСТ ПРАВИЛ ---
         function updateFishingStatus() {
             const now = new Date(); const month = now.getMonth(); 
             const sb = document.getElementById('status-bar'); const rc = document.getElementById('rules-content'); const rt = document.getElementById('rules-title');
@@ -147,7 +146,6 @@
             map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#3498db', 'line-width': 6, 'line-opacity': 0.8 } });
 
-            // Загружаем только точки (БЕЗ зон QGIS)
             map.addSource('fishing-spots', { type: 'geojson', data: './spots.geojson' });
             map.addLayer({ id: 'spots-layer', type: 'circle', source: 'fishing-spots', paint: { 'circle-radius': 9, 'circle-color': ['match', ['get', 'fish'], 'Судак', '#3498db', '#e74c3c'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
 
@@ -157,7 +155,8 @@
             map.on('click', async (e) => {
                 if (isAddMode) {
                     const name = prompt("Название ямы:"); if (!name) return;
-                    const newF = { type: 'Feature', properties: { name, fish: 'Своя точка' }, geometry: { type: 'Point', coordinates: [e.lngLat.lng, e.lngLat.lat] } };
+                    const fish = prompt("Какая рыба?");
+                    const newF = { type: 'Feature', properties: { name, fish }, geometry: { type: 'Point', coordinates: [e.lngLat.lng, e.lngLat.lat] } };
                     mySavedSpots.features.push(newF);
                     localStorage.setItem('myFishingSpots', JSON.stringify(mySavedSpots));
                     map.getSource('my-spots').setData(mySavedSpots);
@@ -167,17 +166,19 @@
                 const feats = map.queryRenderedFeatures(e.point, { layers: ['spots-layer', 'my-spots-layer'] });
                 if (feats.length > 0) {
                     const coords = feats[0].geometry.coordinates;
+                    const p = feats[0].properties;
                     const yaUrl = `https://yandex.ru/maps/?rtext=~${coords[1]},${coords[0]}&rtt=auto`;
                     const dgisUrl = `https://2gis.ru/routeSearch/rsType/car/to/${coords[0]}%2C${coords[1]}`;
 
                     new maplibregl.Popup().setLngLat(coords).setHTML(`
                         <div style="text-align:center; min-width: 170px;">
-                            <b style="font-size:16px;">${feats[0].properties.name}</b><br>
+                            <b style="font-size:16px;">${p.name}</b><br>
+                            <span style="font-size:12px; color: #666;">Рыба: ${p.fish}</span>
                             <div class="nav-links-container">
                                 <a href="${yaUrl}" target="_blank" class="nav-link btn-yandex">ЯНДЕКС</a>
                                 <a href="${dgisUrl}" target="_blank" class="nav-link btn-2gis">2ГИС</a>
                             </div>
-                            <button class="btn-internal" onclick="getRoute([${coords}])">🗺 ПУТЬ НА КАРТЕ</button>
+                            <button class="btn-internal" onclick="getRoute([${coords}])">🗺 ПУТЬ НА МОЕЙ КАРТЕ</button>
                         </div>
                     `).addTo(map);
                 } else {
