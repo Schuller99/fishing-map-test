@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fishing Map Pro — Final Edition</title>
+    <title>Fishing Map Pro — Документация и Карта</title>
     
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; background: #2c3e50; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
 
         .panel { position: absolute; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1; }
@@ -26,7 +26,7 @@
         .status-warning { background: #e67e22; }
         .status-danger { background: #e74c3c; }
 
-        /* ОКНО ПРАВИЛ (С ПОЛНОЙ ИНФОРМАЦИЕЙ) */
+        /* ОКНО ПРАВИЛ */
         #rules-details {
             display: none; position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
             width: 85%; max-width: 580px; background: white; padding: 25px; border-radius: 15px;
@@ -37,18 +37,16 @@
         #rules-details li { margin-bottom: 8px; }
         #rules-details button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; }
 
-        /* ПАНЕЛЬ ФИЛЬТРОВ */
+        /* ФИЛЬТРЫ И ПОГОДА */
         #filter-panel { top: 85px; left: 15px; width: 180px; }
         .filter-btn { display: block; width: 100%; margin-bottom: 10px; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 11px; text-transform: uppercase; }
         .filter-btn.active { background: #e74c3c; }
-
-        /* ПОГОДА */
         #weather-panel { top: 85px; right: 15px; width: 220px; }
         #weather-data { font-size: 13px; margin-top: 5px; color: #34495e; line-height: 1.4; }
 
-        /* НАВИГАЦИЯ В ПОПАПЕ */
-        .nav-links-container { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-        .nav-link { flex: 1; text-align: center; padding: 10px 5px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; color: white; }
+        /* КНОПКИ В ПОПАПЕ */
+        .nav-links-container { display: flex; gap: 8px; margin-top: 15px; justify-content: center; }
+        .nav-link { flex: 1; text-align: center; padding: 12px 5px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; color: white; }
         .btn-yandex { background: #ffcc00; color: black; }
         .btn-2gis { background: #2ecc71; }
         .btn-internal { display: block; margin-top: 10px; padding: 12px; background: #34495e; color: white; text-align: center; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; border: none; width: 100%; }
@@ -58,11 +56,81 @@
             padding: 15px 35px; background: #27ae60; color: white; border: none; border-radius: 40px;
             font-size: 16px; font-weight: bold; cursor: pointer; z-index: 1; box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
+
+        /* --- СТИЛИ ДЛЯ ТИТУЛЬНОГО ЛИСТА (ДОКУМЕНТАЦИИ) --- */
+        #intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(44, 62, 80, 0.95); z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            overflow-y: auto; padding: 20px; box-sizing: border-box;
+        }
+        #intro-content {
+            background: #fff; max-width: 800px; width: 100%; border-radius: 15px;
+            padding: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: relative; margin: auto;
+        }
+        #intro-content h1 { margin-top: 0; color: #2c3e50; font-size: 28px; border-bottom: 3px solid #3498db; padding-bottom: 15px; }
+        #intro-content h3 { color: #2980b9; margin-top: 25px; }
+        #intro-content p { line-height: 1.6; color: #34495e; font-size: 15px; }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;
+        }
+        .stat-card {
+            background: #ecf0f1; padding: 15px; border-radius: 10px; text-align: center; border-left: 4px solid #3498db;
+        }
+        .stat-card strong { display: block; font-size: 24px; color: #2c3e50; margin-bottom: 5px; }
+        #start-btn {
+            display: block; width: 100%; max-width: 300px; margin: 30px auto 0; padding: 15px;
+            background: #27ae60; color: white; border: none; border-radius: 8px;
+            font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        #start-btn:hover { background: #219a52; transform: translateY(-2px); }
+        .author-tag { text-align: right; font-style: italic; color: #7f8c8d; margin-top: 20px; font-size: 14px; }
+
+        #btn-about {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1;
+            background: #fff; border: none; padding: 10px 15px; border-radius: 20px;
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); color: #2c3e50;
+        }
     </style>
 </head>
 <body>
 
+    <div id="intro-overlay">
+        <div id="intro-content">
+            <h1>Информационно-навигационная система<br>«Fishing Map Pro»</h1>
+            
+            <h3>📄 Описание и проблематика</h3>
+            <p>Проект представляет собой интерактивную геоинформационную систему (ГИС), разработанную для решения проблемы разрозненности данных в сфере любительского рыболовства. В настоящее время рыболовы вынуждены использовать несколько разрозненных приложений: для навигации, для отслеживания погодных условий и для изучения законодательных ограничений (нерестовых запретов и зимовальных ям).</p>
+            <p><b>Fishing Map Pro</b> решает эту проблему, объединяя в едином web-интерфейсе картографию, погодный трекинг (API Open-Meteo), правовую базу Росрыболовства и маршрутизацию (интеграция с Яндекс.Навигатор и 2ГИС).</p>
+
+            <h3>📊 Анализ целевой аудитории</h3>
+            <p>Система спроектирована на основе парсинга и анализа базы данных рыболовного сообщества Саратовской области. Полученные статистические данные определили строгий и функциональный UI/UX дизайн:</p>
+            
+            <div class="stats-grid">
+                <div class="stat-card"><strong>32 532</strong><span>Потенциальных пользователей</span></div>
+                <div class="stat-card"><strong>87%</strong><span>Мужская аудитория</span></div>
+                <div class="stat-card"><strong>41.3 года</strong><span>Средний возраст пользователя</span></div>
+                <div class="stat-card"><strong>Саратов / Энгельс</strong><span>Основная география лова</span></div>
+            </div>
+
+            <h3>🛠 Ключевой функционал</h3>
+            <ul>
+                <li>Интерактивный статус-бар с автоматическим определением периода нерестовых запретов.</li>
+                <li>Интеграция сторонних навигаторов для построения маршрута к точке лова.</li>
+                <li>Возможность сохранения собственных гео-меток с сохранением в локальное хранилище браузера.</li>
+                <li>Визуализация легальных и запретных зон (зимовальных ям).</li>
+            </ul>
+
+            <div class="author-tag">Разработчик проекта: <b>schuller99</b></div>
+
+            <button id="start-btn" onclick="closeIntro()">Перейти к карте</button>
+        </div>
+    </div>
+
     <div id="map"></div>
+    <button id="btn-about" onclick="openIntro()">ℹ️ О проекте</button>
+
     <div id="status-bar" onclick="toggleRules()">Загрузка правил...</div>
 
     <div id="rules-details">
@@ -85,6 +153,10 @@
     <button id="add-mode-btn" class="action-btn">📍 ОТМЕТИТЬ ЯМУ</button>
 
     <script>
+        // Управление титульным листом
+        function closeIntro() { document.getElementById('intro-overlay').style.display = 'none'; }
+        function openIntro() { document.getElementById('intro-overlay').style.display = 'flex'; }
+
         const map = new maplibregl.Map({
             container: 'map',
             center: [46.035, 51.518], zoom: 11, minZoom: 9,
@@ -105,11 +177,12 @@
         let isAddMode = false;
         let mySavedSpots = JSON.parse(localStorage.getItem('myFishingSpots')) || { type: 'FeatureCollection', features: [] };
 
+        // ИНФОРМАЦИЯ О ЗАПРЕТАХ (НЕ ТРОГАЕМ)
         function updateFishingStatus() {
             const now = new Date(); const month = now.getMonth(); 
             const sb = document.getElementById('status-bar'); const rc = document.getElementById('rules-content'); const rt = document.getElementById('rules-title');
             
-            if (month === 4 || month === 5) { // Май - Июнь
+            if (month === 4 || month === 5) {
                 sb.className = 'status-danger'; sb.innerHTML = '🛑 НЕРЕСТОВЫЙ ЗАПРЕТ (до 30.06). Нажми для правил.';
                 rt.innerHTML = '🛑 Правила нерестового запрета';
                 rc.innerHTML = `<ul>
@@ -118,7 +191,7 @@
                     <li><b>Снасть:</b> Разрешена 1 поплавочная или донная удочка на человека.</li>
                     <li><b>Ограничение:</b> Не более 2 крючков на одного рыболова.</li>
                 </ul>`;
-            } else if (month === 3) { // Апрель
+            } else if (month === 3) {
                 sb.className = 'status-warning'; sb.innerHTML = '⚠️ СКОРО ЗАПРЕТ (с 1 мая). Нажми для инфо.';
                 rt.innerHTML = '⚠️ Предзапретный период';
                 rc.innerHTML = `<p>До 1 мая разрешена ловля с лодок, но помните:</p>
@@ -128,7 +201,7 @@
                     <li><b>Зимовальные ямы:</b> Ловля на них запрещена круглый год.</li>
                     <li><b>Минимальный размер:</b> Судак < 40см и Щука < 32см — обязательно отпустить.</li>
                 </ul>`;
-            } else { // Обычный сезон
+            } else {
                 sb.className = 'status-ok'; sb.innerHTML = '✅ СЕЗОН ОТКРЫТ! Нажми для инфо.';
                 rt.innerHTML = '✅ Общие правила рыболовства';
                 rc.innerHTML = `<p>Действуют стандартные правила сезона:</p>
@@ -170,10 +243,11 @@
                     const yaUrl = `https://yandex.ru/maps/?rtext=~${coords[1]},${coords[0]}&rtt=auto`;
                     const dgisUrl = `https://2gis.ru/routeSearch/rsType/car/to/${coords[0]}%2C${coords[1]}`;
 
+                    // ИНФОРМАЦИЯ О ТОЧКЕ + КНОПКИ
                     new maplibregl.Popup().setLngLat(coords).setHTML(`
                         <div style="text-align:center; min-width: 170px;">
                             <b style="font-size:16px;">${p.name}</b><br>
-                            <span style="font-size:12px; color: #666;">Рыба: ${p.fish}</span>
+                            <span style="font-size:12px; color: #666; display: block; margin-bottom: 8px;">Рыба: ${p.fish}</span>
                             <div class="nav-links-container">
                                 <a href="${yaUrl}" target="_blank" class="nav-link btn-yandex">ЯНДЕКС</a>
                                 <a href="${dgisUrl}" target="_blank" class="nav-link btn-2gis">2ГИС</a>
